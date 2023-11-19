@@ -21,9 +21,12 @@ typedef struct {
   Pair acceleration;
   Pair maxVelocity;
   Pair maxAcceleration;
+  int jump;
+  int maxJumps;
   Object object;
 } PlayerObject;
 
 void UpdatePlayerObject(PlayerObject *player, Object *collisionObject[], int collisionObjectCount);
+void RenderRect(SDL_FRect *frect);
 
 #endif

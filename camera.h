@@ -10,6 +10,7 @@
 typedef struct {
   SDL_Renderer *renderer;
   SDL_FRect frect;
+  Pair last;
   Pair boundary;
   double zoom;
   double followDelay;
