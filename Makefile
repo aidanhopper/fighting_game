@@ -1,2 +1,2 @@
 main:
-	gcc main.c -lSDL2 -Wall -lm
+	gcc main.c -lSDL2 -Wall -lm -lSDL2_image
