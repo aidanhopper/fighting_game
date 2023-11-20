@@ -2,14 +2,14 @@
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_rect.h>
 
-void UpdatePlayerObject(PlayerObject *player, Object *collisionObject[],
+void UpdatePlayerObject(PlayerObject *player,
+                        CollisionObject *collisionObject[],
                         int collisionObjectCount) {
 
   if (player->jump == 1) {
-    player->acceleration.y = -3;
+    player->acceleration.y = -1;
     player->jump++;
-  } 
-    
+  }
 
   // update x velocity
   player->velocity.x += player->acceleration.x;
@@ -34,14 +34,15 @@ void UpdatePlayerObject(PlayerObject *player, Object *collisionObject[],
   if (player->velocity.x != 0) {
     player->object.frect.x += player->velocity.x;
     for (int i = 0; i < collisionObjectCount; i++) {
-      Object *collisionObj = collisionObject[i];
-      if (SDL_HasIntersectionF(&collisionObj->frect, &player->object.frect)) {
+      CollisionObject *collisionObj = collisionObject[i];
+      if (SDL_HasIntersectionF(&collisionObj->object.frect,
+                               &player->object.frect)) {
         if (player->velocity.x < 0)
           player->object.frect.x =
-              collisionObj->frect.x + collisionObj->frect.w;
+              collisionObj->object.frect.x + collisionObj->object.frect.w;
         else
           player->object.frect.x =
-              collisionObj->frect.x - player->object.frect.w;
+              collisionObj->object.frect.x - player->object.frect.w;
       }
     }
   }
@@ -50,22 +51,27 @@ void UpdatePlayerObject(PlayerObject *player, Object *collisionObject[],
   if (player->velocity.y != 0) {
     player->object.frect.y += player->velocity.y;
     for (int i = 0; i < collisionObjectCount; i++) {
-      Object *collisionObj = collisionObject[i];
-      if (SDL_HasIntersectionF(&collisionObj->frect, &player->object.frect)) {
-        if (player->velocity.y < 0)
+      CollisionObject *collisionObj = collisionObject[i];
+      if (SDL_HasIntersectionF(&collisionObj->object.frect,
+                               &player->object.frect)) {
+        if (player->velocity.y < 0 && !collisionObj->jump_through)
           player->object.frect.y =
-              collisionObj->frect.y + collisionObj->frect.h;
+              collisionObj->object.frect.y + collisionObj->object.frect.h;
         else {
           player->object.frect.y =
-              collisionObj->frect.y - player->object.frect.h;
+              collisionObj->object.frect.y - player->object.frect.h;
           player->jump = 0;
         }
       }
     }
-
   }
+
+  if (player->velocity.x > 0)
+    player->facing_left = 0;
+  else if (player->velocity.x < 0)
+    player->facing_left = 1;
 
   // reset acceleration
   player->acceleration.x = 0;
-  player->acceleration.y += 0.1;
+  player->acceleration.y += 0.07;
 }

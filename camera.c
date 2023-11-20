@@ -1,27 +1,53 @@
 #include "camera.h"
+#include "object.h"
+#include <SDL2/SDL_opengl.h>
+#include <math.h>
 
-void UpdateCamera(Camera *camera, Object *object) {
-  printf("%lf\n", camera->frect.x);
-  double targetx = object->frect.x - camera->frect.w / 2 / camera->zoom +
-                   object->frect.w/2;
-  double targety = object->frect.y - camera->frect.h / 2 / camera->zoom +
-                   object->frect.h/2;
-  double padding = 0;
-  double distancex = targetx - camera->frect.x;
-  if (fabs(distancex) > padding)
-    camera->frect.x += distancex / camera->followDelay;
-  // check the boundary
-  if (camera->frect.x < 0)
-    camera->frect.x = 0.1;
-  if (camera->frect.x + camera->frect.w / camera->zoom > camera->boundary.x)
-    camera->frect.x = camera->boundary.x - camera->frect.w / camera->zoom;
+void UpdateCamera(Camera *camera, PlayerObject *player) {
 
-  double distancey = targety - camera->frect.y;
-  if (fabs(distancey) > padding)
-    camera->frect.y += distancey / camera->followDelay;
-  if (camera->frect.y < 0)
-    camera->frect.y = 0.1;
-  if (camera->frect.y + camera->frect.h / camera->zoom > camera->boundary.y)
-    camera->frect.y = camera->boundary.y - camera->frect.h / camera->zoom;
+  // setting a guard
+  if (camera->scale < 0.01)
+    camera->scale = 0.01;
+  else if (camera->scale >= camera->boundary.x/camera->frect.w) {
+    camera->scale = camera->boundary.x/camera->frect.w;
+  }
 
+  Pair difference = {player->object.frect.x - camera->frect.x,
+                     player->object.frect.y - camera->frect.y};
+
+  camera->frect.x += difference.x / camera->followDelay;
+  camera->frect.y += difference.y / camera->followDelay;
+
+  double scaleFactor = camera->scale;
+
+  double halfWidth = scaleFactor * camera->frect.w / 2.;
+  double halfHeight = scaleFactor * camera->frect.h / 2.;
+
+  double left = -halfWidth + camera->frect.x / 2. + player->object.frect.x / 2 +
+                player->object.frect.w / 2;
+  double right = halfWidth + camera->frect.x / 2. + player->object.frect.x / 2 +
+                 player->object.frect.w / 2;
+  double bottom = halfHeight + camera->frect.y / 2. +
+                  player->object.frect.y / 2 + player->object.frect.h / 2;
+  double top = -halfHeight + camera->frect.y / 2. + player->object.frect.y / 2 +
+               player->object.frect.h / 2;
+
+  if (left < 0) {
+    left = 0;
+    right = scaleFactor * camera->frect.w;
+  }
+
+  else if (right > camera->boundary.x) {
+    right = camera->frect.w;
+    left = camera->frect.w - camera->frect.w * scaleFactor;
+  }
+
+  //printf("left: %lf right: %lf bottom: %lf top: %lf\n", left, right, bottom, top);
+  //printf("scale: %lf\n", camera->scale);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(left, right, bottom, top, -1, 1);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
 }

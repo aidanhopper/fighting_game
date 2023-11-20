@@ -12,10 +12,10 @@ typedef struct {
   SDL_FRect frect;
   Pair last;
   Pair boundary;
-  double zoom;
+  double scale;
   double followDelay;
 } Camera;
 
-void UpdateCamera(Camera *camera, Object *object);
+void UpdateCamera(Camera *camera, PlayerObject *player);
 
 #endif

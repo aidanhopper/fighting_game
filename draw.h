@@ -7,7 +7,8 @@
 #include "object.h"
 #include "pair.h"
 
-void DrawObject(Camera *camera, Object *object);
 void DrawBackgroundColor(SDL_Color *color);
+void DrawPlayerObject(Camera *camera, PlayerObject *player);
+void DrawColorObject(Camera *camera, Object *object);
 
 #endif
