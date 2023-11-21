@@ -3,6 +3,7 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_image.h>
 #include <assert.h>
@@ -17,10 +18,26 @@
     exit(1);                                                                   \
   }
 
+
+
 #define SIGN(n) ({                                                             \
     __typeof__(n) _n = (n);                                                    \
     (__typeof__(n))(_n < 0 ? -1 : (_n > 0 ? 1 : 0));                           \
   })                                                                           \
+
+#define DOT(v0, v1)                  \
+    ({ const v2 _v0 = (v0), _v1 = (v1); (_v0.x * _v1.x) + (_v0.y * _v1.y); })
+
+#define LENGTH(v) ({ const v2 _v = (v); sqrtf(DOT(_v, _v)); })
+
+#define NORMALIZE(u) ({              \
+        const v2 _u = (u);           \
+        const f32 l = LENGTH(_u);    \
+        (v2) { _u.x / l, _u.y / l }; \
+    })
+
+#define MIN(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a < _b ? _a : _b; })
+#define MAX(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a > _b ? _a : _b; })
 
 typedef float f32;
 typedef double f64;
@@ -76,13 +93,19 @@ typedef struct v2i_s {
   i32 x, y;
 } v2i;
 
+typedef struct {
+  u32 w;
+  u32 h;
+  u32 *pixels;
+} texture;
+
 struct {
   SDL_Window *window;
   SDL_Texture *texture;
   SDL_Renderer *renderer;
-  SDL_Surface *textureBuffer[10];
   u32 pixels[SCREEN_WIDTH * SCREEN_HEIGHT];
   bool quit;
+  texture textures[1];
   v2 pos, dir, plane;
 } state;
 
@@ -144,17 +167,14 @@ void render() {
     };
 
     //perform DDA
-    while (hit == 0)
-    {
+    while (hit == 0) {
       //jump to next map square, either in x-direction, or in y-direction
-      if (sideDist.x < sideDist.y)
-      {
+      if (sideDist.x < sideDist.y) {
         sideDist.x += deltaDist.x;
         ipos.x += step.x;
         side = 0;
       }
-      else
-      {
+      else {
         sideDist.y += deltaDist.y;
         ipos.y += step.y;
         side = 1;
@@ -168,26 +188,67 @@ void render() {
     else          perpWallDist = (sideDist.y - deltaDist.y);
 
     int lineHeight = (int) (SCREEN_WIDTH / perpWallDist);
-    int y0 = -lineHeight / 2 + SCREEN_HEIGHT / 2;
-    if (y0 < 0)
-      y0 = 0;
-    int y1 = lineHeight / 2 + SCREEN_HEIGHT / 2;
-    if (y1 >= SCREEN_HEIGHT) y1 = SCREEN_HEIGHT - 1;
+    int y0 = MAX(-lineHeight / 2 + SCREEN_HEIGHT / 2, 0);
+    int y1 = MIN(lineHeight / 2 + SCREEN_HEIGHT / 2, SCREEN_HEIGHT - 1);
 
-    u32 color = 0xFFFFFF;
-    if (side == 1) {
-      const u32
-        br = ((color & 0xFF00FF) * 0xC0) >> 8,
-           g  = ((color & 0x00FF00) * 0xC0) >> 8;
 
-      color = 0xFF000000 | (br & 0xFF00FF) | (g & 0x00FF00);
+    float wallx;
+    if (side == 0) wallx = pos.y + perpWallDist * dir.y;
+    else           wallx = pos.x + perpWallDist * dir.x;
+    wallx -= floorf((wallx));
+    
+    // gets x coordiate on the wall
+    int tx = (u32) (wallx * (float) state.textures[0].w);
+    if (side == 0 && dir.x > 0) tx = state.textures[0].w - tx - 1;
+    if (side == 1 && dir.y < 0) tx = state.textures[0].w - tx - 1;
+
+    float s = 1.0 * state.textures[0].h / lineHeight;
+    float tpos = (y0 - (float) SCREEN_HEIGHT / 2 + (float) lineHeight / 2) * s;
+    for (int y = y0; y < y1; y++) {
+      i32 ty = (int) tpos & (state.textures[0].h - 1);
+      tpos += s;
+      u32 color = state.textures[0].pixels[state.textures[0].h * ty + tx];
+      if (side == 1) color = (color >> 1) & 0x7F7F7F;
+      state.pixels[y * SCREEN_WIDTH + x] = color;
     }
 
-    verline(x, 0, y0, 0xFF202020);
-    verline(x, y0, y1, color);
-    verline(x, y1, SCREEN_HEIGHT - 1, 0x87CEEB);
+    verline(x, 0, y0, 0x222222);
+    verline(x, y1, SCREEN_HEIGHT - 1, 0x333333);
 
+    //printf("SIDEDIST X: %f, SIDEDIST Y: %f\n", sideDist.x, sideDist.y);
+    //printf("POSI X: %d, POSI Y: %d\n", ipos.x, ipos.y);
   }
+}
+
+void textureline() {
+
+}
+
+texture createtexture(const char *path) {
+  SDL_Surface *s = IMG_Load(path); 
+  
+  u32 *arr = malloc(sizeof(u32) * s->w * s->h);
+  for (int i = 0; i < s->w * s->h; i++) {
+    u32 r = ((u8*)s->pixels)[i*3] << 16;
+    u32 g = ((u8*)s->pixels)[i*3 + 1] << 8;
+    u32 b = ((u8*)s->pixels)[i*3 + 2];
+    arr[i] = r | g | b;
+  }
+  
+
+  texture t  = {
+    s->w,
+    s->h,
+    arr
+  };
+
+  SDL_FreeSurface(s);
+
+  return t;
+}
+
+void freetexture(texture *t) {
+  free(t->pixels);
 }
 
 int main() {
@@ -206,13 +267,12 @@ int main() {
                                     SCREEN_HEIGHT);
   ASSERT(state.texture, "SDL failed to create texture: %s\n", SDL_GetError());
 
-  state.textureBuffer[0] = IMG_Load("./texture.png");
+  state.textures[0] = createtexture("./pics/greystone.png");
   
   // game
-  state.pos = (v2){4, 4};
-  state.dir.x = -1;
-  state.dir.y = 0;
-  state.plane.x = 0; state.plane.y = 2;
+  state.pos = (v2){2, 2};
+  state.dir = NORMALIZE(((v2) { -1.0f, 0.1f }));
+  state.plane.x = 0; state.plane.y = 0.66;
   while (!state.quit) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
