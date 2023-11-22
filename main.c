@@ -18,8 +18,6 @@
     exit(1);                                                                   \
   }
 
-
-
 #define SIGN(n) ({                                                             \
     __typeof__(n) _n = (n);                                                    \
     (__typeof__(n))(_n < 0 ? -1 : (_n > 0 ? 1 : 0));                           \
@@ -30,11 +28,6 @@
 
 #define LENGTH(v) ({ const v2 _v = (v); sqrtf(DOT(_v, _v)); })
 
-#define NORMALIZE(u) ({              \
-        const v2 _u = (u);           \
-        const f32 l = LENGTH(_u);    \
-        (v2) { _u.x / l, _u.y / l }; \
-    })
 
 #define MIN(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a < _b ? _a : _b; })
 #define MAX(a, b) ({ __typeof__(a) _a = (a), _b = (b); _a > _b ? _a : _b; })
@@ -54,36 +47,23 @@ typedef ssize_t isize;
 
 #define SCREEN_WIDTH 384
 #define SCREEN_HEIGHT 216
+//#define SCREEN_WIDTH 1280
+//#define SCREEN_HEIGHT 720
 #define MAP_SIZE 24 
-
 #define PI 3.1415
+#define FPS 60
 
-static u8 MAPDATA[MAP_SIZE * MAP_SIZE] = {
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,2,2,2,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1,
-  1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,3,0,0,0,3,0,0,0,1,
-  1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,2,2,0,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,0,0,0,0,5,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-};
+typedef struct v4_s {
+  f32 x, y, z, w;
+} v4;
+
+typedef struct v3_s {
+  f32 x, y, z;
+} v3;
+
+typedef struct v3i_s {
+  i32 x, y, z;
+} v3i;
 
 typedef struct v2_s {
   f32 x, y;
@@ -106,123 +86,72 @@ struct {
   u32 pixels[SCREEN_WIDTH * SCREEN_HEIGHT];
   bool quit;
   texture textures[1];
-  v2 pos, dir, plane;
+  float angle;
+  v3 pos, dir;
 } state;
 
-void verline(int x, int y0, int y1, u32 color) {
-  for (int y = y0; y <= y1; y++) {
-    state.pixels[(y * SCREEN_WIDTH) + x] = color;
-  }
-}
 
 void rotate(f32 rot) {
-  const v2 d = state.dir, p = state.plane;
+  /*
+  const v3 d = state.dir, p = state.plane;
   state.dir.x = d.x * cos(rot) - d.y * sin(rot);
   state.dir.y = d.x * sin(rot) + d.y * cos(rot);
   state.plane.x = p.x * cos(rot) - p.y * sin(rot);
   state.plane.y = p.x * sin(rot) + p.y * cos(rot);
+  */
 }
 
-void render() {
-  for (int x = 0; x < SCREEN_WIDTH; x++) {
+void drawpixel(int x, int y, u32 color) {
+  if (y >= 0 && x >= 0 && y <= SCREEN_HEIGHT-1 && x <= SCREEN_WIDTH - 1)
+    state.pixels[y * SCREEN_WIDTH +  x] = color;
+}
 
-    //calculate ray position and direction
-    double cameraX = 2 * x / (double) SCREEN_WIDTH - 1; //x-coordinate in camera space
-    v2 dir = {
-      state.dir.x + state.plane.x * cameraX,
-      state.dir.y + state.plane.y * cameraX
-    };
-
-    //which box of the map we're in
-    v2i ipos = {
-      (int) state.pos.x,
-      (int) state.pos.y
-    };
-
-    v2 pos = state.pos;
-
-    //length of ray from current position to next x or y-side
-
-    //length of ray from one x or y-side to next x or y-side
-    v2 deltaDist = {
-      (dir.x == 0) ? 1e30 : fabs(1.0 / dir.x),
-      (dir.y == 0) ? 1e30 : fabs(1.0 / dir.y)
-    };
-
-    double perpWallDist;
-
-    //what direction to step in x or y-direction (either +1 or -1)
-    v2i step = {
-      (int) SIGN(dir.x), (int) SIGN(dir.y)
-    };
-
-    int hit = 0; //was there a wall hit?
-    int side; //was a NS or a EW wall hit?
-
-
-    //calculate step and initial sideDist
-    v2 sideDist = {
-      deltaDist.x * (dir.x < 0 ? (pos.x - ipos.x) : (ipos.x + 1 - pos.x)),
-      deltaDist.y * (dir.y < 0 ? (pos.y - ipos.y) : (ipos.y + 1 - pos.y))
-    };
-
-    //perform DDA
-    while (hit == 0) {
-      //jump to next map square, either in x-direction, or in y-direction
-      if (sideDist.x < sideDist.y) {
-        sideDist.x += deltaDist.x;
-        ipos.x += step.x;
-        side = 0;
-      }
-      else {
-        sideDist.y += deltaDist.y;
-        ipos.y += step.y;
-        side = 1;
-      }
-      //Check if ray has hit a wall
-      if (MAPDATA[ipos.y * MAP_SIZE + ipos.x] > 0) hit = 1;
-    } 
-
-    //Calculate distance projected on camera direction (Euclidean distance would give fisheye effect!)
-    if(side == 0) perpWallDist = (sideDist.x - deltaDist.x);
-    else          perpWallDist = (sideDist.y - deltaDist.y);
-
-    int lineHeight = (int) (SCREEN_WIDTH / perpWallDist);
-    int y0 = MAX(-lineHeight / 2 + SCREEN_HEIGHT / 2, 0);
-    int y1 = MIN(lineHeight / 2 + SCREEN_HEIGHT / 2, SCREEN_HEIGHT - 1);
-
-
-    float wallx;
-    if (side == 0) wallx = pos.y + perpWallDist * dir.y;
-    else           wallx = pos.x + perpWallDist * dir.x;
-    wallx -= floorf((wallx));
-    
-    // gets x coordiate on the wall
-    int tx = (u32) (wallx * (float) state.textures[0].w);
-    if (side == 0 && dir.x > 0) tx = state.textures[0].w - tx - 1;
-    if (side == 1 && dir.y < 0) tx = state.textures[0].w - tx - 1;
-
-    float s = 1.0 * state.textures[0].h / lineHeight;
-    float tpos = (y0 - (float) SCREEN_HEIGHT / 2 + (float) lineHeight / 2) * s;
-    for (int y = y0; y < y1; y++) {
-      i32 ty = (int) tpos & (state.textures[0].h - 1);
-      tpos += s;
-      u32 color = state.textures[0].pixels[state.textures[0].h * ty + tx];
-      if (side == 1) color = (color >> 1) & 0x7F7F7F;
-      state.pixels[y * SCREEN_WIDTH + x] = color;
-    }
-
-    verline(x, 0, y0, 0x222222);
-    verline(x, y1, SCREEN_HEIGHT - 1, 0x333333);
-
-    //printf("SIDEDIST X: %f, SIDEDIST Y: %f\n", sideDist.x, sideDist.y);
-    //printf("POSI X: %d, POSI Y: %d\n", ipos.x, ipos.y);
+void verline(int x, int y0, int y1, u32 color) {
+  for (int y = y0; y <= y1; y++) {
+    drawpixel(y, x, color);
   }
 }
 
-void textureline() {
-
+v2 persproject(float x, float y, float z, float w) {
+  float theta = state.angle;
+  float far = 10;
+  float near = 2;
+  float dx = (1/(((float)SCREEN_WIDTH/SCREEN_HEIGHT)*tanf(theta)/2))*x;
+  float dy = (1/tan(theta)/2)*y;
+  float dz = (far/(far-near))*z - (far*near/(far-near))*w;
+  return (v2) {
+    (dx/dz),
+    (dy/dz)
+  };
 }
+
+void render() {
+
+  v3 wall0 = {
+    2 - state.pos.x, 2 - state.pos.y, 1 - state.pos.z
+  };
+  v3 wall1 = {
+    wall0.x + 10 - state.pos.x, wall0.y + 10 - state.pos.y, wall0.z+0.1-state.pos.z
+  };
+
+  float tx0 = wall0.x * cos(-state.angle) + wall0.z * sin(-state.angle);
+  float tz0 = wall0.z * cos(-state.angle) - wall0.x * sin(-state.angle);
+  float tx1 = wall1.x * cos(-state.angle) + wall1.z * sin(-state.angle);
+  float tz1 = wall1.z * cos(-state.angle) - wall1.x * sin(-state.angle);
+
+  float distance = 400;
+  float dx0 = tx0/tz0 * distance + SCREEN_WIDTH/2.0;
+  float dy0 = (wall1.y - wall0.y)/tz0 * distance + SCREEN_WIDTH/2.0;
+  float dx1 = tx1/tz1 * distance + SCREEN_WIDTH/2.0;
+  float dy1 = (wall1.y - wall0.y)/tz1 * distance + SCREEN_WIDTH/2.0;
+
+
+  verline(dx0, dy0, dy1, 0xFFFFFF);
+  verline(dx1, dy0, dy1, 0xFFFFFF);
+
+  //state.pixels[index] = 0xFFFFFF;
+}
+
 
 texture createtexture(const char *path) {
   SDL_Surface *s = IMG_Load(path); 
@@ -269,10 +198,7 @@ int main() {
 
   state.textures[0] = createtexture("./pics/greystone.png");
   
-  // game
-  state.pos = (v2){2, 2};
-  state.dir = NORMALIZE(((v2) { -1.0f, 0.1f }));
-  state.plane.x = 0; state.plane.y = 0.66;
+  state.angle = PI/8;
   while (!state.quit) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -285,21 +211,34 @@ int main() {
 
     const u8 *keystate = SDL_GetKeyboardState(NULL);
     if (keystate[SDL_SCANCODE_LEFT]) {
-      rotate(0.1);
+      state.pos.y += PI/20;
     }
 
     if (keystate[SDL_SCANCODE_RIGHT]) {
-      rotate(-0.1);
+      state.pos.y -= PI/20;
     }
 
     if (keystate[SDL_SCANCODE_UP]) {
-      state.pos.x += state.dir.x * 0.1;
-      state.pos.y += state.dir.y * 0.1;
+      state.angle -= PI/20;
     }
 
     if (keystate[SDL_SCANCODE_DOWN]) {
-      state.pos.x -= state.dir.x * 0.1;
-      state.pos.y -= state.dir.y * 0.1;
+      state.angle += PI/20;
+    }
+
+    if (keystate[SDL_SCANCODE_S]) {
+      state.pos.z -= PI/20;
+    }
+
+    if (keystate[SDL_SCANCODE_D]) {
+      state.pos.x += PI/20;
+    }
+    if (keystate[SDL_SCANCODE_W]) {
+      state.pos.z += PI/20;
+    }
+
+    if (keystate[SDL_SCANCODE_A]) {
+      state.pos.x -= PI/20;
     }
 
     memset(state.pixels, 0, sizeof(state.pixels));
@@ -312,6 +251,7 @@ int main() {
     SDL_RenderCopyEx(state.renderer, state.texture, NULL, NULL, 0.0, NULL,
                      SDL_FLIP_VERTICAL);
     SDL_RenderPresent(state.renderer);
+
   }
 
   // clean up
