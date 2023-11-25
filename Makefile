@@ -1,2 +1,2 @@
 main:
-	gcc main.c -lSDL2 -Wall -lm -lGLU -lGL
+	gcc main.c shader.c -lSDL2 -Wall -lm -lGLU -lGL -lSDL2_image

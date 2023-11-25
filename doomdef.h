@@ -10,6 +10,7 @@
 
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <GL/glext.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
@@ -18,6 +19,8 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_video.h>
+#include <SDL2/SDL_timer.h>
+#include <GL/glext.h>
 
 #define ASSERT(_e, ...)                                                        \
   if (!(_e)) {                                                                 \
@@ -72,4 +75,4 @@ typedef ssize_t isize;
 #define SCREEN_HEIGHT 600
 #define MAP_SIZE 24
 #define PI 3.1415
-#define FPS 60
+#define FPS 144
